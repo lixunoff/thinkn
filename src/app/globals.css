@@ -1,26 +1,143 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Primary */
+  --thinkn-electric-orange: #FF2120;
+  --thinkn-electric-blue: #0131FF;
+  --thinkn-deep-blue: #040136;
+  --thinkn-white: #FFFFFF;
+  --thinkn-black: #000000;
+
+  /* Secondary — Warm */
+  --thinkn-yellow: #FFCC00;
+  --thinkn-amber: #FFB803;
+  --thinkn-orange: #FF9A00;
+  --thinkn-orange-hot: #FF7D01;
+
+  /* Secondary — Cool */
+  --thinkn-blue-mid: #011DBC;
+  --thinkn-blue-deep: #030870;
+
+  /* Greyscale */
+  --thinkn-grey-0: #FFFFFF;
+  --thinkn-grey-50: #F2F3F4;
+  --thinkn-grey-100: #CFD1D3;
+  --thinkn-grey-200: #B3B3B3;
+  --thinkn-grey-300: #999999;
+  --thinkn-grey-400: #6E6E6E;
+  --thinkn-grey-500: #4C4C4C;
+  --thinkn-grey-600: #3B3B3B;
+  --thinkn-grey-700: #262626;
+  --thinkn-grey-800: #1A1A1A;
+  --thinkn-grey-900: #0D0D0D;
+  --thinkn-grey-1000: #000000;
+
+  /* Gradients */
+  --thinkn-gradient-blue: linear-gradient(to right, #000000 0%, #040136 25%, #011DBC 50%, #0131FF 100%);
+  --thinkn-gradient-warm: linear-gradient(to right, #000000 0%, #FF2120 50%, #FF9A00 75%, #FFCC00 100%);
+  --thinkn-gradient-spectrum: linear-gradient(to right, #030870 0%, #0131FF 33%, #FF2120 66%, #FFCC00 100%);
+
+  /* Font */
+  --thinkn-font-sans: 'Rethink Sans', sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@theme {
+  /* Colors — primary */
+  --color-thinkn-electric-orange: #FF2120;
+  --color-thinkn-electric-blue: #0131FF;
+  --color-thinkn-deep-blue: #040136;
+  --color-thinkn-white: #FFFFFF;
+  --color-thinkn-black: #000000;
+
+  /* Colors — warm */
+  --color-thinkn-yellow: #FFCC00;
+  --color-thinkn-amber: #FFB803;
+  --color-thinkn-orange: #FF9A00;
+  --color-thinkn-orange-hot: #FF7D01;
+
+  /* Colors — cool */
+  --color-thinkn-blue-mid: #011DBC;
+  --color-thinkn-blue-deep: #030870;
+
+  /* Colors — greyscale */
+  --color-thinkn-grey-0: #FFFFFF;
+  --color-thinkn-grey-50: #F2F3F4;
+  --color-thinkn-grey-100: #CFD1D3;
+  --color-thinkn-grey-200: #B3B3B3;
+  --color-thinkn-grey-300: #999999;
+  --color-thinkn-grey-400: #6E6E6E;
+  --color-thinkn-grey-500: #4C4C4C;
+  --color-thinkn-grey-600: #3B3B3B;
+  --color-thinkn-grey-700: #262626;
+  --color-thinkn-grey-800: #1A1A1A;
+  --color-thinkn-grey-900: #0D0D0D;
+  --color-thinkn-grey-1000: #000000;
+
+  /* Font family */
+  --font-sans: var(--font-rethink), 'Rethink Sans', sans-serif;
+
+  /* Background gradients */
+  --background-image-gradient-blue: linear-gradient(to right, #000000 0%, #040136 25%, #011DBC 50%, #0131FF 100%);
+  --background-image-gradient-warm: linear-gradient(to right, #000000 0%, #FF2120 50%, #FF9A00 75%, #FFCC00 100%);
+  --background-image-gradient-spectrum: linear-gradient(to right, #030870 0%, #0131FF 33%, #FF2120 66%, #FFCC00 100%);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+@layer base {
+  h1, h2, h3, h4, h5, h6 { font-weight: 700; letter-spacing: -0.02em; }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+html {
+  font-family: var(--font-rethink), sans-serif;
+  background-color: var(--thinkn-black);
+  color: var(--thinkn-white);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Type scale — fluid, defined last to override any Tailwind-generated values */
+:root {
+  --text-display: clamp(60px, 6.667vw, 128px);
+  --lh-display: clamp(60px, 6.667vw, 128px);
+  --ls-display: -0.03em;
+
+  --text-h1: clamp(44px, 5vw, 96px);
+  --lh-h1: clamp(44px, 5vw, 96px);
+  --ls-h1: -0.03em;
+
+  --text-h2: clamp(28px, 3.333vw, 64px);
+  --lh-h2: clamp(28px, 3.333vw, 64px);
+  --ls-h2: -0.02em;
+
+  --text-h3: clamp(22px, 2.5vw, 48px);
+  --lh-h3: clamp(24px, 2.708vw, 52px);
+  --ls-h3: -0.02em;
+
+  --text-h4: clamp(16px, 1.667vw, 32px);
+  --lh-h4: clamp(18px, 1.875vw, 36px);
+  --ls-h4: -0.02em;
+
+  --text-h5: clamp(14px, 1.25vw, 24px);
+  --lh-h5: clamp(16px, 1.458vw, 28px);
+  --ls-h5: -0.01em;
+
+  --text-h6: clamp(12px, 0.9375vw, 18px);
+  --lh-h6: clamp(14px, 1.146vw, 22px);
+  --ls-h6: -0.01em;
+
+  --text-lead: clamp(20px, 2.083vw, 40px);
+  --lh-lead: clamp(20px, 2.083vw, 40px);
+  --ls-lead: -0.02em;
+
+  --text-body: clamp(15px, 1.042vw, 20px);
+  --lh-body: clamp(22px, 1.563vw, 30px);
+  --ls-body: -0.01em;
+
+  --text-body-sm: clamp(13px, 0.833vw, 16px);
+  --lh-body-sm: clamp(20px, 1.25vw, 24px);
+  --ls-body-sm: -0.01em;
+
+  --text-caption: clamp(11px, 0.677vw, 13px);
+  --lh-caption: clamp(14px, 0.938vw, 18px);
+  --ls-caption: 0em;
 }
