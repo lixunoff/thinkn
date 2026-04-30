@@ -118,7 +118,7 @@ html {
   --ls-h4: -0.02em;
 
   --text-h5: clamp(14px, 1.25vw, 24px);
-  --lh-h5: clamp(16px, 1.458vw, 28px);
+  --lh-h5: 1.333;
   --ls-h5: -0.01em;
 
   --text-h6: clamp(12px, 0.9375vw, 18px);

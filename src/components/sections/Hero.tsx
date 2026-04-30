@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from 'react';
 const DOT_X = 762.5;
 const DOT_Y = 57.4976;
 const SVG_H_ORIG = 495;
-const I_TOP_Y_ORIG = 154.994;
 
 function calcSvgHeight(W: number, H: number): number {
   const cx = W / 2, cy = H / 2;
@@ -19,23 +18,29 @@ function calcSvgHeight(W: number, H: number): number {
   if (disc < 0) return 337;
   const s1 = (-B + Math.sqrt(disc)) / (2 * A);
   const s2 = (-B - Math.sqrt(disc)) / (2 * A);
-  const s = s2 > 0 ? s2 : s1;
-  return s * SVG_H_ORIG;
+  return (s2 > 0 ? s2 : s1) * SVG_H_ORIG;
 }
 
 function useLogoLayout() {
-  const [layout, setLayout] = useState({ svgHeight: 0, circleRadius: 0, iTopY: 0, dotInitAngle: 0, dotR: 0 });
+  const [layout, setLayout] = useState({
+    svgHeight: 0, circleRadius: 0, dotInitAngle: 0, dotR: 0,
+    windowWidth: 0, windowHeight: 0,
+  });
   useEffect(() => {
     const calc = () => {
       const W = window.innerWidth, H = window.innerHeight;
       const svgHeight = calcSvgHeight(W, H);
       const scale = svgHeight / SVG_H_ORIG;
-      const iTopY = H - svgHeight + (I_TOP_Y_ORIG / SVG_H_ORIG) * svgHeight;
       const dotScreenX = DOT_X * scale;
       const dotScreenY = H - (SVG_H_ORIG - DOT_Y) * scale;
-      const dotInitAngle = Math.atan2(dotScreenY - H / 2, dotScreenX - W / 2);
-      const dotR = 57.5 * scale;
-      setLayout({ svgHeight, circleRadius: H / 2 - 24, iTopY, dotInitAngle, dotR });
+      setLayout({
+        svgHeight,
+        circleRadius: H / 2 - 24,
+        dotInitAngle: Math.atan2(dotScreenY - H / 2, dotScreenX - W / 2),
+        dotR: 57.5 * scale,
+        windowWidth: W,
+        windowHeight: H,
+      });
     };
     calc();
     window.addEventListener('resize', calc);
@@ -45,7 +50,15 @@ function useLogoLayout() {
 }
 
 export default function Hero() {
-  const { svgHeight, circleRadius, iTopY, dotInitAngle, dotR } = useLogoLayout();
+  const { svgHeight, circleRadius, dotInitAngle, dotR, windowWidth, windowHeight } = useLogoLayout();
+  const orbitCx = windowWidth / 2;
+  const orbitCy = windowHeight / 2;
+  const orbitStartX = orbitCx + circleRadius * Math.cos(dotInitAngle);
+  const orbitStartY = orbitCy + circleRadius * Math.sin(dotInitAngle);
+  const orbitMidX = orbitCx - circleRadius * Math.cos(dotInitAngle);
+  const orbitMidY = orbitCy - circleRadius * Math.sin(dotInitAngle);
+  const orbitCircumference = 2 * Math.PI * circleRadius;
+
   const dotRef = useRef<HTMLDivElement>(null);
   const sphereRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -59,34 +72,31 @@ export default function Hero() {
   const introPhaseRef = useRef(0);
   useEffect(() => { introPhaseRef.current = introPhase; }, [introPhase]);
 
-  // Intro sequence timing
   useEffect(() => {
     const timers = [
-      setTimeout(() => setIntroPhase(1), 300),   // dark slides in
-      setTimeout(() => setIntroPhase(2), 1150),  // slide done → meteors start
-      setTimeout(() => setIntroPhase(3), 1400),  // sphere group scales in
-      setTimeout(() => setIntroPhase(4), 2100),  // title fades in
-      setTimeout(() => setIntroPhase(5), 2500),  // nav fades in
-      setTimeout(() => setIntroPhase(6), 2900),  // description fades in
+      setTimeout(() => setIntroPhase(1), 300),
+      setTimeout(() => setIntroPhase(2), 1150),
+      setTimeout(() => setIntroPhase(3), 2100),
+      setTimeout(() => setIntroPhase(4), 2600),
+      setTimeout(() => setIntroPhase(5), 3200),
+      setTimeout(() => setIntroPhase(6), 3600),
+      setTimeout(() => setIntroPhase(7), 4000),
     ];
     return () => timers.forEach(clearTimeout);
   }, []);
 
-  // Dot orbit animation
   useEffect(() => {
     if (!circleRadius || !dotInitAngle) return;
     const ANIM_DURATION = 7000;
-    const PAUSE_DURATION = 1000;
+    const PAUSE_DURATION = 3000;
     const REVOLUTION = Math.PI * 2;
     const easeInOut = (t: number) =>
       t < 0.5 ? 128 * t ** 8 : 1 - Math.pow(-2 * t + 2, 8) / 2;
 
     const setDotPos = (angle: number) => {
       if (!dotRef.current) return;
-      const x = window.innerWidth / 2 + circleRadius * Math.cos(angle);
-      const y = window.innerHeight / 2 + circleRadius * Math.sin(angle);
-      dotRef.current.style.left = `${x}px`;
-      dotRef.current.style.top = `${y}px`;
+      dotRef.current.style.left = `${window.innerWidth / 2 + circleRadius * Math.cos(angle)}px`;
+      dotRef.current.style.top = `${window.innerHeight / 2 + circleRadius * Math.sin(angle)}px`;
     };
 
     angleRef.current = dotInitAngle;
@@ -100,11 +110,7 @@ export default function Hero() {
       if (phaseStart === null) phaseStart = ts;
       const elapsed = ts - phaseStart;
       if (phase === 'pausing') {
-        if (elapsed >= PAUSE_DURATION) {
-          phase = 'animating';
-          startAngle = angleRef.current;
-          phaseStart = ts;
-        }
+        if (elapsed >= PAUSE_DURATION) { phase = 'animating'; startAngle = angleRef.current; phaseStart = ts; }
       } else {
         const t = Math.min(elapsed / ANIM_DURATION, 1);
         const angle = startAngle + easeInOut(t) * REVOLUTION;
@@ -119,16 +125,13 @@ export default function Hero() {
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [circleRadius, dotInitAngle]);
 
-  // Sphere shake — starts only after phase 3
   useEffect(() => {
     const shake = (ts: number) => {
-      if (introPhaseRef.current >= 3) {
+      if (introPhaseRef.current >= 3 && sphereRef.current) {
         const t = ts / 1000;
         const x = 4 * Math.sin(3.3 * t) + 2.5 * Math.sin(7.1 * t + 1.2) + 1.5 * Math.sin(13.7 * t + 0.7);
         const y = 4 * Math.sin(2.9 * t + 0.5) + 2.5 * Math.sin(6.3 * t + 2.1) + 1.5 * Math.sin(11.9 * t + 1.8);
-        if (sphereRef.current) {
-          sphereRef.current.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
-        }
+        sphereRef.current.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
       }
       shakeRafRef.current = requestAnimationFrame(shake);
     };
@@ -136,7 +139,6 @@ export default function Hero() {
     return () => { if (shakeRafRef.current) cancelAnimationFrame(shakeRafRef.current); };
   }, []);
 
-  // Meteors — start only after phase 2
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -148,10 +150,8 @@ export default function Hero() {
     if (!ctxFront) return;
 
     const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      canvasFront.width = window.innerWidth;
-      canvasFront.height = window.innerHeight;
+      canvas.width = canvasFront.width = window.innerWidth;
+      canvas.height = canvasFront.height = window.innerHeight;
     };
     resize();
     window.addEventListener('resize', resize);
@@ -186,7 +186,7 @@ export default function Hero() {
       const tailX = m.x + m.length * D;
       const tailY = m.y - m.length * D;
       const grad = c.createLinearGradient(tailX, tailY, m.x, m.y);
-      grad.addColorStop(0, `rgba(255,33,32,0)`);
+      grad.addColorStop(0, 'rgba(255,33,32,0)');
       grad.addColorStop(1, `rgba(255,255,255,${m.opacity})`);
       c.beginPath();
       c.moveTo(tailX, tailY);
@@ -234,31 +234,13 @@ export default function Hero() {
     };
   }, []);
 
-  const svgScale = svgHeight / 495;
+  const svgScale = svgHeight / SVG_H_ORIG;
   const STROKE_XS = [130, 370, 610, 720, 830, 1070, 1180, 1490, 1730];
   const strokeW = Math.round(85 * svgScale);
 
-  const svgStyle = {
-    top: introPhase >= 2 ? `calc(100% - ${svgHeight}px)` : `-${svgHeight}px`,
-    left: 0,
-    height: svgHeight > 0 ? `${svgHeight}px` : 0,
-    pointerEvents: 'none' as const,
-    zIndex: 5,
-    transition: introPhase >= 2 ? 'top 0.85s cubic-bezier(0.76, 0, 0.24, 1)' : 'none',
-  };
-
   return (
     <>
-      {/* White screen — sits behind the sliding section */}
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: 'white',
-          zIndex: 998,
-          pointerEvents: 'none',
-        }}
-      />
+      <div style={{ position: 'fixed', inset: 0, backgroundColor: 'white', zIndex: 998, pointerEvents: 'none' }} />
 
       <section
         className="relative w-full overflow-hidden"
@@ -267,43 +249,93 @@ export default function Hero() {
           backgroundColor: '#0D0D0D',
           transform: introPhase >= 1 ? 'translateY(0)' : 'translateY(-100%)',
           transition: 'transform 0.85s cubic-bezier(0.76, 0, 0.24, 1)',
-          position: 'relative',
           zIndex: 999,
         }}
       >
-        {/* Background meteor canvas */}
-        <canvas
-          ref={canvasRef}
+        <canvas ref={canvasRef} className="absolute inset-0" style={{ pointerEvents: 'none' }} />
+
+        <div
           className="absolute inset-0"
-          style={{ pointerEvents: 'none' }}
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E")`,
+            backgroundSize: '200px 200px',
+            opacity: 0.06,
+            pointerEvents: 'none',
+            zIndex: 3,
+          }}
         />
 
-        {/* Sphere group — scales in at phase 3 */}
         <div
           className="absolute inset-0"
           style={{
             pointerEvents: 'none',
+            zIndex: 2,
             opacity: introPhase >= 3 ? 1 : 0,
             transform: introPhase >= 3 ? 'scale(1)' : 'scale(0.1)',
             transition: 'opacity 0.5s ease, transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1)',
             transformOrigin: '50% 50%',
           }}
         >
-          {/* Red glow */}
           <div
             className="absolute"
             style={{
               top: '50%', left: '50%',
-              width: '600px', height: '600px',
+              width: `${circleRadius * 1.4}px`, height: `${circleRadius * 1.4}px`,
               transform: 'translate(-50%, -50%)',
               borderRadius: '50%',
               background: '#FF2120',
               opacity: 0.32,
               filter: 'blur(100px)',
-              zIndex: 1,
             }}
           />
-          {/* Sphere */}
+        </div>
+
+        {circleRadius > 0 && (
+          <svg
+            style={{
+              position: 'absolute', inset: 0,
+              width: '100%', height: '100%',
+              pointerEvents: 'none',
+              zIndex: 2,
+              overflow: 'visible',
+            }}
+          >
+            <defs>
+              <mask id="orbit-mask">
+                <rect width="100%" height="100%" fill="black" />
+                <path
+                  d={`M ${orbitStartX} ${orbitStartY} A ${circleRadius} ${circleRadius} 0 0 1 ${orbitMidX} ${orbitMidY} A ${circleRadius} ${circleRadius} 0 0 1 ${orbitStartX} ${orbitStartY}`}
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="6"
+                  strokeDasharray={orbitCircumference}
+                  strokeDashoffset={introPhase >= 4 ? 0 : orbitCircumference}
+                  style={{ transition: introPhase >= 4 ? 'stroke-dashoffset 1.2s ease-in-out' : 'none' }}
+                />
+              </mask>
+            </defs>
+            <circle
+              cx={orbitCx} cy={orbitCy} r={circleRadius}
+              fill="none"
+              stroke="rgba(255, 33, 32, 0.24)"
+              strokeWidth="2"
+              strokeDasharray="6 12"
+              mask="url(#orbit-mask)"
+            />
+          </svg>
+        )}
+
+        <div
+          className="absolute inset-0"
+          style={{
+            pointerEvents: 'none',
+            zIndex: 6,
+            opacity: introPhase >= 3 ? 1 : 0,
+            transform: introPhase >= 3 ? 'scale(1)' : 'scale(4)',
+            transition: 'opacity 0.5s ease, transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            transformOrigin: '50% 50%',
+          }}
+        >
           <img
             ref={sphereRef}
             src="/sphere-hero.png"
@@ -312,34 +344,13 @@ export default function Hero() {
             style={{
               top: '50%', left: '50%',
               transform: 'translate(-50%, -50%)',
-              width: '600px', height: '600px',
-              zIndex: 2,
+              width: `${circleRadius * 1.6}px`, height: `${circleRadius * 1.6}px`,
             }}
           />
-          {/* Dashed orbit */}
-          {circleRadius > 0 && (
-            <div
-              className="absolute"
-              style={{
-                top: '50%', left: '50%',
-                width: `${circleRadius * 2}px`,
-                height: `${circleRadius * 2}px`,
-                transform: 'translate(-50%, -50%)',
-                borderRadius: '50%',
-                border: '2px dashed rgba(255, 33, 32, 0.24)',
-              }}
-            />
-          )}
         </div>
 
-        {/* Front meteor canvas */}
-        <canvas
-          ref={canvasFrontRef}
-          className="absolute inset-0"
-          style={{ pointerEvents: 'none', zIndex: 3 }}
-        />
+        <canvas ref={canvasFrontRef} className="absolute inset-0" style={{ pointerEvents: 'none', zIndex: 7 }} />
 
-        {/* Orbit dot — falls with SVG at phase 2 */}
         {dotR > 0 && (
           <div
             ref={dotRef}
@@ -349,17 +360,13 @@ export default function Hero() {
               height: `${dotR * 2}px`,
               borderRadius: '50%',
               backgroundColor: 'white',
-              transform: introPhase >= 2
-                ? 'translate(-50%, -50%)'
-                : 'translate(-50%, -50%) translateY(-100vh)',
-              transition: introPhase >= 2
-                ? 'transform 0.85s cubic-bezier(0.76, 0, 0.24, 1)'
-                : 'none',
+              zIndex: 8,
+              transform: introPhase >= 2 ? 'translate(-50%, -50%)' : 'translate(-50%, -50%) translateY(-100vh)',
+              transition: introPhase >= 2 ? 'transform 0.85s cubic-bezier(0.76, 0, 0.24, 1)' : 'none',
             }}
           />
         )}
 
-        {/* Letter-stroke stretch bars */}
         {svgHeight > 0 && STROKE_XS.map(x => (
           <div
             key={x}
@@ -379,7 +386,6 @@ export default function Hero() {
           />
         ))}
 
-        {/* Wordmark */}
         {svgHeight > 0 && (
           <svg
             viewBox="0 0 1815 495"
@@ -387,7 +393,12 @@ export default function Hero() {
             xmlns="http://www.w3.org/2000/svg"
             className="absolute"
             style={{
-              ...svgStyle,
+              top: introPhase >= 2 ? `calc(100% - ${svgHeight}px)` : `-${svgHeight}px`,
+              left: 0,
+              height: `${svgHeight}px`,
+              pointerEvents: 'none',
+              zIndex: 5,
+              transition: introPhase >= 2 ? 'top 0.85s cubic-bezier(0.76, 0, 0.24, 1)' : 'none',
             }}
           >
             <path d="M1180 494.968V14.9995H1265V299.988L1380 154.876H1475L1335 324.986L1475 494.968L1380 494.979L1265 349.985V494.968H1180Z" fill="white"/>
@@ -399,14 +410,12 @@ export default function Hero() {
           </svg>
         )}
 
-        {/* Content grid */}
         <div
           className="absolute inset-0 z-10"
           style={{
             padding: '24px',
             display: 'grid',
             gridTemplateColumns: 'repeat(12, 1fr)',
-            gridTemplateRows: '1fr',
             columnGap: '48px',
           }}
         >
@@ -417,14 +426,31 @@ export default function Hero() {
               fontSize: 'var(--text-h2)',
               lineHeight: 'var(--lh-h2)',
               letterSpacing: 'var(--ls-h2)',
-              color: '#FFFFFF',
-              whiteSpace: 'pre-line',
-              opacity: introPhase >= 4 ? 1 : 0,
-              transform: introPhase >= 4 ? 'translateY(0)' : 'translateY(-12px)',
-              transition: 'opacity 0.6s ease, transform 0.6s ease',
             }}
           >
-            {`One partner.\n`}<span style={{ color: 'var(--thinkn-grey-400)' }}>End-to-end</span>{` digital\ninfrastructure.`}
+            {[
+              { text: 'One' },
+              { text: 'partner.', break: true },
+              { text: 'End-to-end', color: 'var(--thinkn-grey-400)' },
+              { text: 'digital', break: true },
+              { text: 'infrastructure.' },
+            ].map((word, i) => (
+              <span key={i}>
+                <span style={{ display: 'inline-block', overflow: 'hidden', verticalAlign: 'bottom', paddingBottom: '0.3em', marginBottom: '-0.3em' }}>
+                  <span style={{
+                    display: 'inline-block',
+                    color: word.color ?? '#FFFFFF',
+                    transform: introPhase >= 5 ? 'translateY(0)' : 'translateY(150%)',
+                    transition: introPhase >= 5
+                      ? `transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.07}s`
+                      : 'none',
+                  }}>
+                    {word.text}
+                  </span>
+                </span>
+                {word.break ? <br /> : i < 4 ? ' ' : null}
+              </span>
+            ))}
           </h1>
 
           <div style={{ gridColumn: '10 / span 3', display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -432,26 +458,44 @@ export default function Hero() {
               style={{
                 display: 'flex',
                 flexWrap: 'wrap',
-                gap: '0',
                 fontSize: 'var(--text-h5)',
                 lineHeight: 'var(--lh-h5)',
                 letterSpacing: 'var(--ls-h5)',
                 fontWeight: 700,
-                opacity: introPhase >= 5 ? 1 : 0,
-                transition: 'opacity 0.5s ease',
               }}
             >
               {['Company', 'Services', 'Team', 'Contact'].map((item, i, arr) => (
-                <span key={item} style={{ display: 'flex', gap: '0' }}>
-                  <a
-                    href="#"
-                    className="text-thinkn-electric-orange hover:text-white"
-                    style={{ textDecoration: 'none', transition: 'color 0.15s' }}
-                  >
-                    {item}
-                  </a>
+                <span key={item} style={{ display: 'flex' }}>
+                  <span style={{ display: 'inline-block', overflow: 'hidden', verticalAlign: 'bottom', paddingBottom: '0.3em', marginBottom: '-0.3em' }}>
+                    <a
+                      href="#"
+                      className="text-thinkn-electric-orange hover:text-white"
+                      style={{
+                        display: 'inline-block',
+                        textDecoration: 'none',
+                        transition: introPhase >= 6
+                          ? `transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.07}s, color 0.15s`
+                          : 'color 0.15s',
+                        transform: introPhase >= 6 ? 'translateY(0)' : 'translateY(150%)',
+                      }}
+                    >
+                      {item}
+                    </a>
+                  </span>
                   {i < arr.length - 1 && (
-                    <span style={{ color: 'var(--thinkn-electric-orange)' }}>/</span>
+                    <span style={{
+                      display: 'inline-block', overflow: 'hidden', verticalAlign: 'bottom',
+                      paddingBottom: '0.3em', marginBottom: '-0.3em',
+                    }}>
+                      <span style={{
+                        display: 'inline-block',
+                        color: 'var(--thinkn-electric-orange)',
+                        transform: introPhase >= 6 ? 'translateY(0)' : 'translateY(150%)',
+                        transition: introPhase >= 6
+                          ? `transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.07 + 0.035}s`
+                          : 'none',
+                      }}>/</span>
+                    </span>
                   )}
                 </span>
               ))}
@@ -465,12 +509,24 @@ export default function Hero() {
                 letterSpacing: 'var(--ls-h5)',
                 fontWeight: 700,
                 color: '#FFFFFF',
-                opacity: introPhase >= 6 ? 1 : 0,
-                transition: 'opacity 0.5s ease',
               }}
             >
-              We build and license platforms for digital transformation — from core
-              systems to intelligent automation.
+              {'Venture tech company that builds and licenses platforms for digital transformation — from core systems to intelligent automation.'.split(' ').map((word, i, arr) => (
+                <span key={i}>
+                  <span style={{ display: 'inline-block', overflow: 'hidden', verticalAlign: 'bottom', paddingBottom: '0.3em', marginBottom: '-0.3em' }}>
+                    <span style={{
+                      display: 'inline-block',
+                      transform: introPhase >= 7 ? 'translateY(0)' : 'translateY(150%)',
+                      transition: introPhase >= 7
+                        ? `transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.05}s`
+                        : 'none',
+                    }}>
+                      {word}
+                    </span>
+                  </span>
+                  {i < arr.length - 1 ? ' ' : null}
+                </span>
+              ))}
             </h5>
           </div>
         </div>
